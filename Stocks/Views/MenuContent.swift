@@ -31,8 +31,7 @@ struct MenuContent: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(vm.quotes) { q in
-                            QuoteRow(q: q)
-                                .frame(height: rowHeight)       // делаем строки одинаковой высоты
+                            QuoteRow(vm: vm, q: q)
                             Divider()
                         }
                     }

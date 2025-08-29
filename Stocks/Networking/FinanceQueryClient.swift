@@ -57,3 +57,34 @@ actor FinanceQueryClient {
         return try JSONDecoder().decode([SearchResult].self, from: data)
     }
 }
+extension FinanceQueryClient {
+    /// Возвращает массив закрытий по возрастанию даты
+    func historicalCloses(symbol: String, range: String = "1mo", interval: String = "1d")
+    async throws -> [Double] {
+        var c = URLComponents(
+            url: baseURL.appendingPathComponent("/v1/historical"),
+            resolvingAgainstBaseURL: false
+        )!
+        c.queryItems = [
+            URLQueryItem(name: "symbol", value: symbol),
+            URLQueryItem(name: "range", value: range),
+            URLQueryItem(name: "interval", value: interval)
+        ]
+
+        var req = URLRequest(url: c.url!)
+        if let key = apiKey, !key.isEmpty {
+            req.addValue(key, forHTTPHeaderField: "x-api-key")
+        }
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw URLError(.badServerResponse, userInfo: ["body": body])
+        }
+
+        // Ответ — словарь "YYYY-MM-DD" -> HistoricalData
+        let dict = try JSONDecoder().decode([String: HistoricalData].self, from: data)
+        let keys = dict.keys.sorted() // формат ISO сортируется лексикографически
+        return keys.compactMap { dict[$0]?.close }
+    }
+}
