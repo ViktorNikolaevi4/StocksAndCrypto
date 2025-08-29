@@ -10,7 +10,12 @@ final class QuotesViewModel: ObservableObject {
     @Published var quotes: [SimpleQuote] = []
     @Published var isLoading = false
     @Published var lastError: String?
-    @Published var selectedSymbol: String? 
+    @Published var selectedSymbol: String?
+
+    @Published var refreshTick = Date()   // ⬅️ новое
+
+
+
 
     private var client: FinanceQueryClient {
         FinanceQueryClient(baseURL: URL(string: serverRaw)!, apiKey: apiKey)
@@ -25,17 +30,17 @@ final class QuotesViewModel: ObservableObject {
 
     func refresh() async {
         guard !isLoading else { return }
-        isLoading = true
-        lastError = nil
+        isLoading = true; lastError = nil
         do {
             let result = try await client.simpleQuotes(symbols: symbols)
             self.quotes = result
+            self.refreshTick = Date()     // ⬅️ дергаем тик
         } catch {
             self.lastError = (error as NSError).userInfo["body"] as? String ?? error.localizedDescription
         }
         isLoading = false
     }
-
+    
     func startAutoRefresh() {
         Task.detached { [weak self] in
             while true {

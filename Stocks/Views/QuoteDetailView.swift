@@ -1,75 +1,106 @@
 import SwiftUI
 import AppKit
 
+/// Детальная карточка тикера: слева сверху тикер+имя, справа проценты,
+/// ниже мини-график и крупная цена. Данные живут, пока окно открыто.
 struct QuoteDetailView: View {
     @ObservedObject var vm: QuotesViewModel
 
-    @State private var quote: SimpleQuote?
+    // только серия для графика и служебные флаги
     @State private var series: [Double] = []
     @State private var isLoading = false
+    @State private var lastSeriesUpdate = Date.distantPast
 
+    // «держать поверх всех»
     @AppStorage("quoteDetailAlwaysOnTop") private var alwaysOnTop = false
+
+    /// Текущая «живая» котировка для выбранного тикера из общего списка vm.quotes
+    private var liveQuote: SimpleQuote? {
+        guard let s = vm.selectedSymbol else { return nil }
+        return vm.quotes.first { $0.symbol.uppercased() == s.uppercased() }
+    }
 
     var body: some View {
         content
             .padding(14)
-            // ⬇️ добавляем пин в заголовок окна
+            // Кнопка-пин в заголовок окна (не перекрывает контент)
             .background(TitlebarPinAccessory(isPinned: $alwaysOnTop))
+            // первый заход/смена тикера — грузим серию
+            .task(id: vm.selectedSymbol) {
+                if let s = vm.selectedSymbol { await loadSeries(for: s, force: true) }
+            }
+            // каждое обновление общего списка котировок — освежаем график редко,
+            // а цена/процент обновятся сами через liveQuote
+            .onReceive(vm.$refreshTick) { _ in
+                guard let s = vm.selectedSymbol else { return }
+                let isCrypto = SymbolNormalizer.isCrypto(symbol: s)
+                let minGap: TimeInterval = isCrypto ? 60 : 300   // 1 мин для крипты, 5 мин для акций
+                if Date().timeIntervalSince(lastSeriesUpdate) > minGap {
+                    Task { await loadSeries(for: s) }
+                }
+            }
     }
 
     @ViewBuilder private var content: some View {
-        if let symbol = vm.selectedSymbol {
+        if let s = vm.selectedSymbol {
+            let q = liveQuote     // «живые» данные
             VStack(spacing: 10) {
+                // Верхняя строка: слева тикер+имя, справа проценты
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(symbol).font(.title3.monospaced()).bold()
-                        Text(quote?.name ?? "—").font(.caption).foregroundStyle(.secondary)
+                        Text(s).font(.title3.monospaced()).bold()
+                        Text(q?.name ?? "—")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    let isUp = quote?.change.trimmingCharacters(in: .whitespaces).hasPrefix("+") ?? false
-                    Text(quote?.percentChange ?? "—")
+                    let isUp = q?.change.trimmingCharacters(in: .whitespaces).hasPrefix("+") ?? false
+                    Text(q?.percentChange ?? "—")
                         .font(.title3.monospaced())
                         .foregroundStyle(isUp ? .green : .red)
                 }
 
+                // График
                 SparklineView(
                     data: series,
-                    rising: ((series.last ?? 0) >= (series.first ?? 0)),
+                    rising: (series.last ?? 0) >= (series.first ?? 0),
                     color: .green
                 )
                 .frame(height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
+                // Крупная цена
                 HStack {
                     Spacer()
-                    Text(quote?.price ?? "—")
+                    Text(q?.price ?? "—")
                         .font(.system(size: 28, weight: .semibold, design: .monospaced))
                 }
 
                 if isLoading { ProgressView().controlSize(.small) }
             }
-            .task(id: symbol) { await load(symbol: symbol) }
         } else {
             Text("Тикер не выбран").padding()
         }
     }
 
-    private func load(symbol: String) async {
+    // Грузим только исторические закрытия для графика
+    private func loadSeries(for symbol: String, force: Bool = false) async {
         guard !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
+        isLoading = true; defer { isLoading = false }
         do {
             let client = FinanceQueryClient(baseURL: URL(string: vm.serverRaw)!, apiKey: vm.apiKey)
-            quote = try await client.simpleQuotes(symbols: [symbol]).first
             let isCrypto = SymbolNormalizer.isCrypto(symbol: symbol)
             let range = isCrypto ? "1mo" : "3mo"
             let interval = isCrypto ? "1h" : "1d"
-            series = try await client.historicalCloses(symbol: symbol, range: range, interval: interval)
+            let values = try await client.historicalCloses(symbol: symbol, range: range, interval: interval)
+            self.series = Array(values.suffix(120))
+            self.lastSeriesUpdate = Date()
         } catch {
-            series = []; quote = nil
+            // оставляем прошлую серию; можно показать ошибку при желании
         }
     }
 }
+
 
 
 import SwiftUI
