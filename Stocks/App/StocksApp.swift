@@ -21,5 +21,10 @@ struct FinanceMenuBarApp: App {
             SettingsView(vm: vm)
                 .frame(width: 560)
         }
+        // Отдельное окно  для добавления тикера
+        Window("Добавить тикер", id: "addSymbol") {
+            AddSymbolSheet(vm: vm)
+                .frame(width: 560, height: 400)
+        }
     }
 }

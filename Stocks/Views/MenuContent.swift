@@ -4,7 +4,7 @@ import AppKit
 struct MenuContent: View {
     @ObservedObject var vm: QuotesViewModel
     @Environment(\.openWindow) private var openWindow
-    @State private var showAdd = false
+//    @State private var showAdd = false
 
     private let rowHeight: CGFloat = 52
     private let visibleRows: CGFloat = 7
@@ -41,10 +41,12 @@ struct MenuContent: View {
                 .scrollIndicators(.automatic)
             }
 
-            Button("＋ Добавить тикер…") { showAdd = true }
-                .sheet(isPresented: $showAdd) { AddSymbolSheet(vm: vm) }
-                .buttonStyle(.borderless)
-                .padding(.top, 4)
+            Button("＋ Добавить тикер…") {
+                NSApp.activate(ignoringOtherApps: true)   // вытащить окно на передний план
+                openWindow(id: "addSymbol")               // открыть отдельное окно
+            }
+            .buttonStyle(.borderless)
+            .padding(.top, 4)
 
             HStack {
                 Button {
