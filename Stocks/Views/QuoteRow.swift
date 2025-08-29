@@ -5,9 +5,14 @@ struct QuoteRow: View {
     @ObservedObject var vm: QuotesViewModel
     let q: SimpleQuote
 
+    // Настраиваемая ширина графика и отступы
+    private let sparklineWidth: CGFloat = 120     // подберите 90…140
+    private let gutter: CGFloat = 8               // отступы слева/справа от графика
+
     var body: some View {
         VStack(spacing: 4) {
-            // Верхняя строка: индикатор • тикер — SPARKLINE — цена
+
+            // Верхняя строка: • тикер — [SPARKLINE фикс. ширины] — цена (справа)
             HStack(spacing: 10) {
                 Circle()
                     .frame(width: 8, height: 8)
@@ -16,13 +21,18 @@ struct QuoteRow: View {
                 Text(q.symbol)
                     .font(.headline.monospaced())
 
-                // Мини-график между тикером и ценой
+                // Разводим контент: символ слева, цена справа
+                Spacer(minLength: gutter)
+
+                // Узкий спарклайн фиксированной ширины
                 SparklineRemote(symbol: q.symbol, vm: vm)
-                    .frame(height: 18)
-                    .frame(maxWidth: .infinity)
+                    .frame(width: sparklineWidth, height: 18)
+
+                Spacer(minLength: gutter)
 
                 Text(q.price)
                     .font(.headline.monospaced())
+                    .layoutPriority(1) // не даём цене сжиматься
             }
 
             // Нижняя строка: название и изменение
@@ -43,3 +53,4 @@ struct QuoteRow: View {
         .contentShape(Rectangle())
     }
 }
+
