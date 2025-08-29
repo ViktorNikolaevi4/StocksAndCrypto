@@ -6,6 +6,9 @@ struct MenuContent: View {
     @Environment(\.openWindow) private var openWindow
     @State private var showAdd = false
 
+    private let rowHeight: CGFloat = 52
+    private let visibleRows: CGFloat = 7
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -23,10 +26,19 @@ struct MenuContent: View {
             } else if let err = vm.lastError, vm.quotes.isEmpty {
                 Text(err).foregroundStyle(.red).font(.caption).padding(.vertical, 6)
             } else {
-                ForEach(vm.quotes) { q in
-                    QuoteRow(q: q)
-                    Divider()
+                // скроллируемый список с видимыми 7 строками
+                let rows = min(CGFloat(vm.quotes.count), visibleRows)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(vm.quotes) { q in
+                            QuoteRow(q: q)
+                                .frame(height: rowHeight)       // делаем строки одинаковой высоты
+                            Divider()
+                        }
+                    }
                 }
+                .frame(height: rows * rowHeight)        // ограничиваем высоту
+                .scrollIndicators(.automatic)
             }
 
             Button("＋ Добавить тикер…") { showAdd = true }
@@ -50,6 +62,6 @@ struct MenuContent: View {
             .padding(.top, 4)
         }
         .padding(12)
-        .frame(minWidth: 300)
+        .frame(minWidth: 400)
     }
 }

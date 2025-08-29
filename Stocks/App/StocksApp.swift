@@ -8,7 +8,7 @@ struct FinanceMenuBarApp: App {
     var body: some Scene {
         MenuBarExtra("Quotes", systemImage: "chart.line.uptrend.xyaxis") {
             MenuContent(vm: vm)
-                .frame(width: 320)
+                .frame(width: 400)
                 .task {
                     await vm.refresh()
                     vm.startAutoRefresh()
