@@ -26,5 +26,9 @@ struct FinanceMenuBarApp: App {
             AddSymbolSheet(vm: vm)
                 .frame(width: 560, height: 400)
         }
+        Window("Карточка", id: "quoteDetail") {
+            QuoteDetailView(vm: vm)                 // новый экран ниже
+                .frame(width: 360, height: 260)
+        }
     }
 }

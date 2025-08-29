@@ -3,6 +3,7 @@ import SwiftUI
 struct SparklineRemote: View {
     let symbol: String
     @ObservedObject var vm: QuotesViewModel
+    var color: Color? = nil
 
     @State private var series: [Double] = []
     @State private var isLoading = false
@@ -10,7 +11,8 @@ struct SparklineRemote: View {
     var body: some View {
         SparklineView(
             data: series,
-            rising: (series.last ?? 0) >= (series.first ?? 0)
+            rising: (series.last ?? 0) >= (series.first ?? 0),
+            color: color
         )
         .onAppear { Task { await load() } }
         .onChange(of: vm.serverRaw) { _ in Task { await load() } }

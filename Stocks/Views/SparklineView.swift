@@ -3,6 +3,7 @@ import SwiftUI
 struct SparklineView: View {
     let data: [Double]
     let rising: Bool
+    var color: Color? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -12,6 +13,7 @@ struct SparklineView: View {
             let maxV = data.max() ?? 1
             let span = max(maxV - minV, 0.0001)
             let stepX = data.count > 1 ? w / CGFloat(data.count - 1) : 0
+            let lineColor = color ?? (rising ? Color.green : Color.red)
 
             // линия
             Path { p in

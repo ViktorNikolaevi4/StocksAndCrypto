@@ -10,6 +10,7 @@ final class QuotesViewModel: ObservableObject {
     @Published var quotes: [SimpleQuote] = []
     @Published var isLoading = false
     @Published var lastError: String?
+    @Published var selectedSymbol: String? 
 
     private var client: FinanceQueryClient {
         FinanceQueryClient(baseURL: URL(string: serverRaw)!, apiKey: apiKey)
