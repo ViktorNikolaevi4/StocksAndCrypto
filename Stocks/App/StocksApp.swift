@@ -28,7 +28,10 @@ struct FinanceMenuBarApp: App {
         }
         Window("Карточка", id: "quoteDetail") {
             QuoteDetailView(vm: vm)                 // новый экран ниже
-                .frame(width: 360, height: 260)
+                .frame(minWidth: 240, minHeight: 160)
         }
+        .defaultSize(width: 300, height: 200)
+        .defaultPosition(.center)
+        .windowResizability(.automatic)
     }
 }
