@@ -31,9 +31,18 @@ struct MenuContent: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(vm.quotes) { q in
-                            QuoteRow(vm: vm, q: q)
+                            Button {
+                                vm.selectedSymbol = q.symbol
+                                NSApp.activate(ignoringOtherApps: true)
+                                openWindow(id: "quoteDetail")
+                            } label: {
+                                QuoteRow(vm: vm, q: q)
+                                    .frame(height: rowHeight)
+                            }
+                            .buttonStyle(.plain)   // без синих подсветок
                             Divider()
                         }
+
                     }
                 }
                 .frame(height: rows * rowHeight)        // ограничиваем высоту
