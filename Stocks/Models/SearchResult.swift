@@ -5,5 +5,5 @@ struct SearchResult: Codable, Identifiable {
     let symbol: String
     let exchange: String
     let type: String
-    var id: String { symbol }
+    var id: String { symbol.uppercased() + "@" + (exchange.isEmpty ? "_" : exchange.uppercased()) }
 }

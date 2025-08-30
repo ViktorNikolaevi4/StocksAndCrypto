@@ -17,6 +17,7 @@ enum SymbolNormalizer {
 
     static func isCrypto(symbol: String) -> Bool {
         let u = symbol.uppercased()
-        return u.contains("-USD") || cryptoBase.contains(u)
+        if u.hasSuffix("-USD") && !u.contains(".") { return true }
+        return cryptoBase.contains(u)
     }
 }
