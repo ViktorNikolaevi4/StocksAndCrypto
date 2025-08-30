@@ -4,13 +4,16 @@ import SwiftUI
 /// Данные нормализуются по высоте в переданном фрейме.
 struct SparklineView: View {
     var data: [Double]
-    var rising: Bool
+    var risingOverride: Bool? = nil
     var colorOverride: Color? = nil
     var lineWidth: CGFloat = 2.2
     /// Насколько «изогнута» кривая: 0.0 — ломаная, ~0.5…1.0 — мягкая.
     var curvature: CGFloat = 1.5
 
     var body: some View {
+        let rising = risingOverride ?? ((data.last ?? 0) >= (data.first ?? 0))
+         let lineColor = colorOverride ?? (rising ? .green : .red)
+
            GeometryReader { geo in
                let rect = geo.frame(in: .local)
                let points = makePoints(in: rect, values: data)

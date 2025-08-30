@@ -19,7 +19,12 @@ struct QuoteRow: View {
 
                 Spacer(minLength: gutter)
 
-                SparklineRemote(symbol: q.symbol, vm: vm)
+                SparklineRemote(
+                    symbol: q.symbol,
+                    vm: vm,
+                    colorOverride: q.changeIsPositive ? .green : .red,
+                    risingOverride: q.changeIsPositive
+                )
                     .frame(width: sparklineWidth, height: 18)
 
                 Spacer(minLength: gutter)

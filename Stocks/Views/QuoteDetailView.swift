@@ -64,7 +64,7 @@ struct QuoteDetailView: View {
                 // График
                 SparklineView(
                     data: series,
-                    rising: (series.last ?? 0) >= (series.first ?? 0),
+                    risingOverride: (series.last ?? 0) >= (series.first ?? 0),
                     colorOverride: isUp ? .green : .red
                 )
                 .frame(height: 90)
