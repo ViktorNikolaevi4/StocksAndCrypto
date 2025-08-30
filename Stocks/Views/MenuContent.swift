@@ -12,12 +12,12 @@ struct MenuContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Мой список").font(.headline)
+                Text("My watchlist").font(.headline)
                 Spacer()
                 Button { Task { await vm.refresh() } } label: {
                     Image(systemName: "arrow.clockwise")
                 }
-                .help("Обновить сейчас")
+                .help("Update now")
             }
             .padding(.bottom, 2)
 
@@ -49,7 +49,7 @@ struct MenuContent: View {
                 .scrollIndicators(.automatic)
             }
 
-            Button("＋ Добавить тикер…") {
+            Button("+ Add ticker…") {
                 NSApp.activate(ignoringOtherApps: true)   // вытащить окно на передний план
                 openWindow(id: "addSymbol")               // открыть отдельное окно
             }
@@ -61,11 +61,11 @@ struct MenuContent: View {
                     NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "settings")
                 } label: {
-                    Label("⚙︎ Настройки…", systemImage: "gearshape")
+                    Label("Settings…", systemImage: "gearshape")
                 }
 
                 Spacer()
-                Text("обновление: \(Int(vm.refreshSeconds))s")
+                Text("update: \(Int(vm.refreshSeconds))s")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
