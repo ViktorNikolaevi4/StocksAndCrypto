@@ -12,7 +12,7 @@ struct SparklineRemote: View {
         SparklineView(
             data: series,
             rising: (series.last ?? 0) >= (series.first ?? 0),
-            color: color
+            colorOverride: color          // ← было: color
         )
         .onAppear { Task { await load() } }
         .onChange(of: vm.serverRaw) { _ in Task { await load() } }

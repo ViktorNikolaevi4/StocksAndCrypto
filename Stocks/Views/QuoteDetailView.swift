@@ -43,9 +43,11 @@ struct QuoteDetailView: View {
 
     @ViewBuilder private var content: some View {
         if let s = vm.selectedSymbol {
-            let q = liveQuote     // «живые» данные
+            let q = liveQuote
+            let isUp = q?.changeIsPositive ?? false   // ← готовый флаг
+
             VStack(spacing: 10) {
-                // Верхняя строка: слева тикер+имя, справа проценты
+                // Верхняя строка
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(s).font(.title3.monospaced()).bold()
@@ -54,7 +56,6 @@ struct QuoteDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    let isUp = q?.change.trimmingCharacters(in: .whitespaces).hasPrefix("+") ?? false
                     Text(q?.percentChange ?? "—")
                         .font(.title3.monospaced())
                         .foregroundStyle(isUp ? .green : .red)
@@ -64,7 +65,7 @@ struct QuoteDetailView: View {
                 SparklineView(
                     data: series,
                     rising: (series.last ?? 0) >= (series.first ?? 0),
-                    color: .green
+                    colorOverride: isUp ? .green : .red
                 )
                 .frame(height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -82,6 +83,7 @@ struct QuoteDetailView: View {
             Text("Тикер не выбран").padding()
         }
     }
+
 
     // Грузим только исторические закрытия для графика
     private func loadSeries(for symbol: String, force: Bool = false) async {
