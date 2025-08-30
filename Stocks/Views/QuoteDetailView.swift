@@ -70,12 +70,12 @@ struct QuoteDetailView: View {
                 .frame(height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                // Крупная цена
-                HStack {
-                    Spacer()
-                    Text(q?.price ?? "—")
-                        .font(.system(size: 28, weight: .semibold, design: .monospaced))
-                }
+                // Крупная цена (по центру)
+                Text(q?.price ?? "—")
+                    .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    // опционально, чтобы цвет совпадал с направлением:
+                    .foregroundStyle((q?.changeIsPositive ?? false) ? .green : .red)
 
                 if isLoading { ProgressView().controlSize(.small) }
             }
