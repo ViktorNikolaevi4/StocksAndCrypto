@@ -95,11 +95,173 @@ struct AddSymbolSheet: View {
         guard !q.isEmpty else { return }
         isLoading = true; errorText = nil
         defer { isLoading = false }
+
         do {
             let client = FinanceQueryClient(baseURL: URL(string: vm.serverRaw)!, apiKey: vm.apiKey)
-            results = try await client.searchSymbols(query: q, hits: 20, yahoo: true)
+
+            // 1) строим варианты запроса
+            let variants = buildSearchQueries(raw: q, filter: filter)
+
+            // 2) шлём запросы ко всем источникам для всех вариантов
+            var bucket: [SearchResult] = []
+            for v in variants {
+                // Yahoo
+                bucket += try await client.searchSymbols(query: v, hits: 20, yahoo: true)
+                // non-Yahoo (внутренний источник; лучше ловит крипту)
+                bucket += try await client.searchSymbols(query: v, hits: 20, yahoo: false)
+            }
+
+            // 3) удаляем дубли (по symbol+exchange)
+            var seen = Set<String>()
+            let deduped = bucket.filter { r in
+                let key = r.symbol.uppercased() + "@" + r.exchange.uppercased()
+                if seen.contains(key) { return false }
+                seen.insert(key); return true
+            }
+
+            // 4) показываем в зависимости от фильтра
+            switch filter {
+            case .all:
+                results = deduped
+            case .crypto:
+                results = deduped.filter { isCryptoResult($0) }
+            case .equities:
+                results = deduped.filter { !isCryptoResult($0) }
+            }
+
+            // 5) фоллбек: ничего не нашли, но это точно токен → подсунем CRYPTO
+            if results.isEmpty, let usd = usdVariantIfToken(q) {
+                results = [SearchResult(
+                    name: prettyName(for: usd),
+                    symbol: usd,
+                    exchange: "CRYPTO",
+                    type: "crypto"
+                )]
+            }
         } catch {
-            errorText = error.localizedDescription
+            errorText = friendlyError(error)
         }
     }
+
+    // === Helpers ===
+
+    /// Построить набор разумных запросов для крипты/акций.
+    private func buildSearchQueries(raw: String, filter: SearchFilter) -> [String] {
+        var out = Set<String>()
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        let upper = trimmed.uppercased()
+        out.insert(trimmed)                  // как ввёл пользователь
+        out.insert(upper)                    // в верхнем регистре (для тикеров)
+
+        // имя монеты → тикер (на случай "Celestia", "Avalanche" и т.п.)
+        if let sym = nameToTicker[upper] {
+            out.insert(sym)
+            out.insert("\(sym)-USD")
+        }
+
+        // если это похоже на токен или фильтр "Крипто" — добавим -USD
+        if filter == .crypto || looksLikeToken(upper) {
+            if !upper.contains("-") { out.insert("\(upper)-USD") }
+        }
+
+        // если уже ввели -USD — добавим также короткий символ
+        if upper.hasSuffix("-USD") {
+            out.insert(String(upper.dropLast(4)))
+        }
+
+        return Array(out)
+    }
+
+    /// Признак «похоже на крипто-тикер».
+    private func looksLikeToken(_ u: String) -> Bool {
+        u.range(of: #"^[A-Z0-9]{2,10}$"#, options: .regularExpression) != nil
+    }
+
+    /// Если строка похожа на токен — вернуть его вариант с -USD.
+    private func usdVariantIfToken(_ raw: String) -> String? {
+        let u = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !u.isEmpty else { return nil }
+        if u.hasSuffix("-USD") { return u }
+        return looksLikeToken(u) ? "\(u)-USD" : nil
+    }
+
+    /// Определение «крипты» для результата поиска.
+    private func isCryptoResult(_ r: SearchResult) -> Bool {
+        let uSym = r.symbol.uppercased()
+        let uEx  = r.exchange.uppercased()
+        return uSym.contains("-USD") || uEx.contains("CRYPTO") || uEx.contains("CCC")
+    }
+
+    /// Красивое имя для CRYPTO-фоллбека.
+    private func prettyName(for symbol: String) -> String {
+        let base = symbol.replacingOccurrences(of: "-USD", with: "")
+        return (tickerToName[base] ?? base.capitalized)
+    }
+
+    /// Мини-алиасы «имя → тикер» (можно расширять по мере нужды)
+    private let nameToTicker: [String: String] = [
+        "BITCOIN": "BTC",
+        "ETHEREUM": "ETH",
+        "SOLANA": "SOL",
+        "BINANCE": "BNB",
+        "RIPPLE": "XRP",
+        "CARDANO": "ADA",
+        "AVALANCHE": "AVAX",
+        "POLKADOT": "DOT",
+        "CELESTIA": "TIA"
+    ]
+
+    /// Алиасы «тикер → красивое имя» (для фоллбека)
+    private let tickerToName: [String: String] = [
+        "BTC":"Bitcoin", "ETH":"Ethereum", "SOL":"Solana", "BNB":"BNB",
+        "XRP":"Ripple", "ADA":"Cardano", "AVAX":"Avalanche", "DOT":"Polkadot",
+        "TIA":"Celestia"
+    ]
+
+
+
+    private func queryVariants(for raw: String, filter: SearchFilter) -> [String] {
+        // базовый вариант всегда
+        var v = [raw]
+        // если выбран «Крипто» или введено похоже на символ (A..Z/0..9 без пробелов) — добавим -USD
+        if filter == .crypto || looksLikeToken(raw) {
+            let u = raw.uppercased()
+            if !u.contains("-") { v.append(u + "-USD") }
+        }
+        return Array(Set(v)) // на всякий случай без дублей
+    }
+
+//    private func looksLikeToken(_ s: String) -> Bool {
+//        let u = s.uppercased()
+//        return u.range(of: "^[A-Z0-9]{2,10}$", options: .regularExpression) != nil
+//    }
+
+
+
+    private func uniqueBySymbol(_ arr: [SearchResult]) -> [SearchResult] {
+        var seen = Set<String>(), res: [SearchResult] = []
+        for r in arr {
+            let key = r.symbol.uppercased()
+            if seen.insert(key).inserted { res.append(r) }
+        }
+        return res
+    }
+    private func friendlyError(_ error: Error) -> String {
+        let ns = error as NSError
+        return ns.userInfo["body"] as? String ?? ns.localizedDescription
+    }
+
+
 }
+//extension SymbolNormalizer {
+//    static func prettyName(for symbol: String) -> String {
+//        // "AVAX-USD" -> "Avalanche"
+//        let base = symbol.replacingOccurrences(of: "-USD", with: "")
+//        let map = ["BTC":"Bitcoin","ETH":"Ethereum","SOL":"Solana","BNB":"BNB",
+//                   "XRP":"Ripple","ADA":"Cardano","AVAX":"Avalanche"]
+//        return map[base] ?? base
+//    }
+//}
+

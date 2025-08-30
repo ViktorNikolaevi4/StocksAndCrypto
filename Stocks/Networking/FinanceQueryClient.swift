@@ -42,20 +42,20 @@ actor FinanceQueryClient {
             URLQueryItem(name: "query", value: query),
             URLQueryItem(name: "hits", value: String(hits)),
             URLQueryItem(name: "yahoo", value: yahoo ? "true" : "false")
+            // ⬅️ Больше НЕ добавляем "type"
         ]
-        if let type { c.queryItems?.append(URLQueryItem(name: "type", value: type)) }
 
         var req = URLRequest(url: c.url!)
-        if let key = apiKey, !key.isEmpty {
-            req.addValue(key, forHTTPHeaderField: "x-api-key")
-        }
+        if let key = apiKey, !key.isEmpty { req.addValue(key, forHTTPHeaderField: "x-api-key") }
 
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw HTTPError(status: http.statusCode, body: body)
         }
         return try JSONDecoder().decode([SearchResult].self, from: data)
     }
+
 }
 extension FinanceQueryClient {
     /// Возвращает массив закрытий по возрастанию даты
@@ -87,4 +87,9 @@ extension FinanceQueryClient {
         let keys = dict.keys.sorted() // формат ISO сортируется лексикографически
         return keys.compactMap { dict[$0]?.close }
     }
+}
+struct HTTPError: LocalizedError {
+    let status: Int
+    let body: String
+    var errorDescription: String? { "HTTP \(status): \(body)" }
 }

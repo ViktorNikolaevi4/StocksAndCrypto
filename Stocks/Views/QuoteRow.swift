@@ -1,66 +1,52 @@
 import SwiftUI
 
-/// Одна строка списка котировок c мини-графиком и открытием карточки по нажатию.
+/// Одна строка списка котировок без индикаторной точки и без процента.
 struct QuoteRow: View {
     @ObservedObject var vm: QuotesViewModel
     let q: SimpleQuote
 
-    // Настройки компоновки
-    private let sparklineWidth: CGFloat = 120   // подберите 90…140
-    private let gutter: CGFloat = 8             // отступы вокруг графика
-
-    @Environment(\.openWindow) private var openWindow
+    private let sparklineWidth: CGFloat = 120
+    private let gutter: CGFloat = 8
 
     var body: some View {
-        Button {
-            vm.selectedSymbol = q.symbol
-            NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: "quoteDetail")
-        } label: {
-            VStack(spacing: 4) {
-                // Верхняя строка: индикатор • тикер — [SPARKLINE] — цена
-                HStack(spacing: 10) {
-                    Circle()
-                        .frame(width: 8, height: 8)
-                        .foregroundStyle(q.changeIsPositive ? .green : .red)
+        VStack(spacing: 4) {
 
-                    Text(q.symbol)
-                        .font(.headline.monospaced())
+            // Верхняя строка: тикер — [SPARKLINE] — цена
+            HStack(spacing: 10) {
+                // ⬇️ индикатор- кружок удалён
+                Text(q.symbol)
+                    .font(.headline.monospaced())
 
-                    Spacer(minLength: gutter)
+                Spacer(minLength: gutter)
 
-                    SparklineRemote(
-                        symbol: q.symbol,
-                        vm: vm,
-                        color: q.changeIsPositive ? .green : .red
-                    )
-                        .frame(width: sparklineWidth, height: 18)
+                SparklineRemote(symbol: q.symbol, vm: vm)
+                    .frame(width: sparklineWidth, height: 18)
 
-                    Spacer(minLength: gutter)
+                Spacer(minLength: gutter)
 
-                    Text(q.price)
-                        .font(.headline.monospaced())
-                        .layoutPriority(1) // не даём цене сжиматься
-                }
-
-                // Нижняя строка: название и изменение
-                HStack {
-                    Text(q.name)
-                        .lineLimit(1)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    Text(q.change + "  " + q.percentChange)
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(q.changeIsPositive ? .green : .red)
-                }
+                Text(q.price)
+                    .font(.headline.monospaced())
+                    .layoutPriority(1)
             }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+
+            // Нижняя строка: название и ТОЛЬКО изменение (без процента)
+            HStack {
+                Text(q.name)
+                    .lineLimit(1)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                // ⬇️ оставляем только абсолютное изменение; проценты убраны
+                Text(q.change)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(q.changeIsPositive ? .green : .red)
+            }
         }
-        .buttonStyle(.plain) // без синей подсветки
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
     }
 }
+
 
